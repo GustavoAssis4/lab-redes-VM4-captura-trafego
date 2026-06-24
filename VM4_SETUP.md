@@ -16,6 +16,10 @@ Interfaces monitoradas:
 - ens3
 - ens7
 
+IP das interfaces monitoradas:
+VM4_1    	(VLAN 40):    		10.0.40.10/24  (default 10.0.40.1/24)
+VM4_2    	(VLAN 40):    		10.0.40.20/24  (default 10.0.40.1/24)
+
 Interfaces provenientes dos switches virtuais:
 
 - SW1 → VLAN40_CAP.TRAF1
