@@ -115,7 +115,7 @@ Os switches realizam o espelhamento do tráfego através da funcionalidade SPAN/
 Esse mecanismo cria cópias dos pacotes observados e os encaminha para a VM4, permitindo inspeção passiva sem interferir na comunicação original da rede.
 
 A VM4 não participa ativamente da comunicação entre os hosts, seu papel é exclusivamente observar o tráfego replicado pelos switches virtuais através da técnica de port mirroring (SPAN), permitindo monitoramento passivo da rede sem alterar os pacotes originais.
----
+
 
 
 
