@@ -45,7 +45,7 @@ Verificação de conectividade:
 ```
 ping 10.10.1.2
 ```
-Instalação de dependências
+## Instalação de dependências
 
 Atualização do sistema:
 ```
@@ -61,7 +61,7 @@ Instalação das bibliotecas:
 pip install scapy 
 pip install requests
 ```
-Resolução de problemas DNS
+## Resolução de problemas DNS
 
 Durante o projeto foi necessário corrigir problemas de resolução DNS.
 
@@ -75,7 +75,7 @@ DNS utilizados:
 
 1.1.1.1
 ```
-Docker
+## Docker
 
 Instalação do Docker:
 ```
