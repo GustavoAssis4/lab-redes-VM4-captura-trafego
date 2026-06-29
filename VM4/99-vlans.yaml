@@ -1,0 +1,50 @@
+network:
+  version: 2
+  ethernets:
+    ens3:
+      dhcp4: false
+    ens7:
+      dhcp4: false
+    ens8:
+      dhcp4: true
+    ens9:
+      dhcp4: false
+      addresses:
+        - 10.0.40.10/24
+  vlans:
+    ens3.10:
+      id: 10
+      link: ens3
+    ens3.20:
+      id: 20
+      link: ens3
+    ens3.30:
+      id: 30
+      link: ens3
+    ens3.40:
+      id: 40
+      link: ens3
+    ens3.50:
+      id: 50
+      link: ens3
+    ens3.60:
+      id: 60
+      link: ens3
+    ens7.10:
+      id: 10
+      link: ens7
+    ens7.20:
+      id: 20
+      link: ens7
+    ens7.30:
+      id: 30
+      link: ens7
+    ens7.40:
+      id: 40
+      link: ens7
+    ens7.50:
+      id: 50
+      link: ens7
+    ens7.60:
+      id: 60
+      link: ens7
