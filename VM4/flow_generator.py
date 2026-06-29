@@ -4,41 +4,41 @@ from datetime import datetime
 import threading
 import time
 import json
+import os
 
-VM1_API = "http://10.10.1.2/api/v1/flows/"
+# ==========================================
+# CONFIGURAÇÕES GLOBAIS
+# ==========================================
+VM1_IP = "10.0.20.10"
+VM1_API = f"http://{VM1_IP}/api/v1/flows/batch"
+FLOW_TIMEOUT = 60  # Tempo em segundos para expirar um fluxo inativo
 
+# Variáveis de Estado
 flows = {}
 sent_flows = set()
-
-FLOW_TIMEOUT = 60  # segundos
-
+flows_changed = False
 total_packets = 0
 total_bytes = 0
 
 
-def send_flow(flow_data):
+def send_flow(batch):
+    """Envia os dados dos fluxos em lote (batch) para a API."""
     try:
         response = requests.post(
             VM1_API,
-            json=flow_data,
+            json=batch,
             timeout=5
         )
-
         if response.status_code in [200, 201]:
-            print(
-                f"[VM1 OK] "
-                f"{flow_data['src_ip']}:{flow_data['src_port']} "
-                f"-> "
-                f"{flow_data['dst_ip']}:{flow_data['dst_port']}"
-            )
+            print(f"[VM1 OK] {len(batch)} fluxos enviados.")
         else:
-            print(f"[ERRO API] {response.status_code}")
-
+            print(f"[ERRO API] Status: {response.status_code}")
     except Exception as e:
         print(f"[ERRO ENVIO] {e}")
 
 
 def get_service(protocol, port):
+    """Retorna o nome do serviço baseado na porta."""
     if protocol == "ICMP":
         return "ICMP"
 
@@ -51,22 +51,26 @@ def get_service(protocol, port):
         443: "HTTPS",
         8000: "HTTP-TESTE"
     }
-
     return services.get(port, "DESCONHECIDO")
 
 
 def process(packet):
-    global total_packets
-    global total_bytes
+    """Processa cada pacote capturado pelo Scapy."""
+    global flows_changed, total_packets, total_bytes
 
     if IP not in packet:
         return
 
-    total_packets += 1
-    total_bytes += len(packet)
-
     src_ip = packet[IP].src
     dst_ip = packet[IP].dst
+
+    # Ignora tráfego da/para a própria VM da API para evitar loop infinito
+    if src_ip == VM1_IP or dst_ip == VM1_IP:
+        return
+
+    flows_changed = True
+    total_packets += 1
+    total_bytes += len(packet)
 
     protocol = "OTHER"
     src_port = 0
@@ -76,26 +80,18 @@ def process(packet):
         protocol = "TCP"
         src_port = packet[TCP].sport
         dst_port = packet[TCP].dport
-
     elif UDP in packet:
         protocol = "UDP"
         src_port = packet[UDP].sport
         dst_port = packet[UDP].dport
-
     elif ICMP in packet:
         protocol = "ICMP"
 
     interface = packet.sniffed_on
+    # Extrai a VLAN de forma segura, previne crash se a interface não tiver '.'
+    vlan = interface.split(".")[1] if "." in interface else "N/A"
 
-    flow_key = (
-        interface,
-        src_ip,
-        dst_ip,
-        src_port,
-        dst_port,
-        protocol
-    )
-
+    flow_key = (interface, src_ip, dst_ip, src_port, dst_port, protocol)
     now = datetime.now()
 
     if flow_key not in flows:
@@ -112,22 +108,20 @@ def process(packet):
 
 
 def export_json():
+    """Exporta os fluxos atuais para um arquivo JSON local."""
     data = []
-
-    for flow, stats in flows.items():
+    
+    for flow, stats in list(flows.items()):
         interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
+        vlan = interface.split(".")[1] if "." in interface else "N/A"
 
-        duration = (
-            stats["last_seen"] -
-            stats["first_seen"]
-        ).total_seconds()
-
+        duration = (stats["last_seen"] - stats["first_seen"]).total_seconds()
         rate = stats["bytes"] / duration if duration > 0 else 0
-
         service = get_service(protocol, dst_port)
 
         data.append({
             "interface": interface,
+            "vlan": vlan,
             "src_ip": src_ip,
             "dst_ip": dst_ip,
             "src_port": src_port,
@@ -147,29 +141,33 @@ def export_json():
 
 
 def remove_expired_flows():
+    """Remove fluxos que estão ociosos além do tempo limite (TIMEOUT)."""
     now = datetime.now()
-
+    
     for flow in list(flows.keys()):
-        idle_time = (
-            now -
-            flows[flow]["last_seen"]
-        ).total_seconds()
-
+        idle_time = (now - flows[flow]["last_seen"]).total_seconds()
+        
         if idle_time > FLOW_TIMEOUT:
-            print(f"[TIMEOUT] Removendo fluxo {flow}")
-
             flow_id = hash(flow)
-
+            
             if flow_id in sent_flows:
                 sent_flows.remove(flow_id)
-
+                
+            print(f"[TIMEOUT] Removendo fluxo {flow}")
             del flows[flow]
 
 
 def print_flow_table():
+    """Thread em background que exibe e envia fluxos de tempos em tempos."""
+    global flows_changed
+    
     while True:
         time.sleep(10)
 
+        if not flows_changed:
+            continue
+
+        flows_changed = False
         remove_expired_flows()
         export_json()
 
@@ -182,29 +180,18 @@ def print_flow_table():
             print("Nenhum fluxo capturado.")
             continue
 
+        batch = []
+
         for flow, stats in list(flows.items()):
-            (
-                interface,
-                src_ip,
-                dst_ip,
-                src_port,
-                dst_port,
-                protocol
-            ) = flow
+            interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
+            vlan = interface.split(".")[1] if "." in interface else "N/A"
 
-            duration = (
-                stats["last_seen"] -
-                stats["first_seen"]
-            ).total_seconds()
-
+            duration = (stats["last_seen"] - stats["first_seen"]).total_seconds()
             rate = stats["bytes"] / duration if duration > 0 else 0
-
             service = get_service(protocol, dst_port)
-
             flow_id = hash(flow)
 
             if flow_id not in sent_flows:
-
                 flow_data = {
                     "src_ip": src_ip,
                     "dst_ip": dst_ip,
@@ -215,32 +202,26 @@ def print_flow_table():
                     "packets": stats["packets"],
                     "duration_s": round(duration, 2)
                 }
-
-                send_flow(flow_data)
+                batch.append(flow_data)
                 sent_flows.add(flow_id)
 
             print(f"INTERFACE : {interface}")
+            print(f"VLAN      : {vlan}")
             print(f"PROTOCOLO : {protocol}")
-            print(f"SERVICO   : {service}")
+            print(f"SERVIÇO   : {service}")
             print(f"FLOW ID   : {flow_id}")
             print(f"ORIGEM    : {src_ip}:{src_port}")
             print(f"DESTINO   : {dst_ip}:{dst_port}")
             print(f"PACOTES   : {stats['packets']}")
             print(f"BYTES     : {stats['bytes']}")
-            print(f"DURACAO   : {duration:.2f}s")
+            print(f"DURAÇÃO   : {duration:.2f}s")
             print(f"BYTES/S   : {rate:.2f}")
-
-            print(
-                f"INICIO    : "
-                f"{stats['first_seen'].strftime('%H:%M:%S')}"
-            )
-
-            print(
-                f"ULTIMO    : "
-                f"{stats['last_seen'].strftime('%H:%M:%S')}"
-            )
-
+            print(f"INÍCIO    : {stats['first_seen'].strftime('%H:%M:%S')}")
+            print(f"ÚLTIMO    : {stats['last_seen'].strftime('%H:%M:%S')}")
             print("-" * 90)
+
+        if batch:
+            send_flow(batch)
 
         print("\nRESUMO GERAL")
         print("-" * 90)
@@ -249,16 +230,26 @@ def print_flow_table():
         print("=" * 90)
 
 
-threading.Thread(
-    target=print_flow_table,
-    daemon=True
-).start()
+# ==========================================
+# EXECUÇÃO PRINCIPAL
+# ==========================================
+if __name__ == "__main__":
+    interfaces_to_monitor = [
+        "ens3.10", "ens3.20", "ens3.30", "ens3.40", "ens3.50", "ens3.60",
+        "ens7.10", "ens7.20", "ens7.30", "ens7.40", "ens7.50", "ens7.60",
+    ]
 
-print("Flow Generator iniciado...")
-print("Monitorando interfaces ens3 e ens7 ...")
+    print("=" * 60)
+    print("Flow Generator iniciado")
+    print("=" * 60)
+    print("Interfaces monitoradas:")
+    for iface in interfaces_to_monitor:
+        print(f" - {iface}")
 
-sniff(
-    iface=["ens3", "ens7"],
-    prn=process,
-    store=False
-)
+    # Inicia a thread de monitoramento da tabela
+    table_thread = threading.Thread(target=print_flow_table, daemon=True)
+    table_thread.start()
+
+    # Inicia o sniffer
+    sniff(iface=interfaces_to_monitor, prn=process, store=False)
+
