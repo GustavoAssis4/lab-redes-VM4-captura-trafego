@@ -4,18 +4,15 @@
 
 A VM4 é responsável pela captura passiva do tráfego espelhado da infraestrutura OpenStack, realizando a geração de fluxos de comunicação (Flow Generator) e enviando essas informações para a API REST hospedada na VM1.
 
----
-
-# Topologia
+## Topologia
 
 A VM4 está conectada à VLAN de monitoramento (VLAN 40) e recebe o tráfego espelhado pelos switches virtuais.
 
-Interfaces físicas:
+**Interfaces físicas:**
+- `ens3` → Switch Virtual 1
+- `ens7` → Switch Virtual 2
 
-- ens3 → Switch Virtual 1
-- ens7 → Switch Virtual 2
-
-Subinterfaces monitoradas pelo Flow Generator:
+**Subinterfaces monitoradas pelo Flow Generator:**
 
 ```
 ens3.10
@@ -33,221 +30,237 @@ ens7.50
 ens7.60
 ```
 
-MAC Address da interface ligada ao SW1
+## Endereçamento e Acesso Utilizado
 
+**VM4 conectada ao Switch Virtual 1**
+- IP: `10.0.40.10/16`
+- Gateway: `10.0.0.1`
+- MAC Address: `fa:16:3e:77:99:5e`
+
+**VM4 conectada ao Switch Virtual 2**
+- IP: `10.0.40.20/16`
+- Gateway: `10.0.0.2`
+- MAC Address: `fa:16:3e:69:d6:31`
+
+**Acesso remoto à VM:**
+
+```bash
+ssh root@10.10.1.22
+# Senha padrão: 123456
 ```
-fa:16:3e:77:99:5e
-```
 
-MAC Address da interface ligada ao SW2
+## Configuração Inicial e Inspeção do Sistema
 
-```
-fa:16:3e:69:d6:31
-```
-
----
-
-# Configuração inicial
-
-Verificar interfaces
-
+Verificar interfaces e endereços IP:
 ```bash
 ip addr
 ```
 
-Verificar rotas
-
+Verificar tabela de rotas:
 ```bash
 ip route
 ```
 
-Testar conectividade
-
+Testar conectividade com a infraestrutura (ex: VM1):
 ```bash
 ping 10.10.1.2
 ```
 
----
-
-# Atualização do sistema
-
+Verificar a utilização do disco rígido:
 ```bash
-apt update
-apt upgrade -y
+df -h
 ```
 
----
+## Configuração do Ambiente e Atualização do Sistema
 
-# Instalação do Python
-
+**1. Atualização do Sistema Operacional**
 ```bash
-apt install python3 python3-pip -y
+apt update && apt upgrade -y
 ```
 
----
+**2. Resolução de DNS (caso a VM não consiga acessar a internet)**
 
-# Instalação das bibliotecas
-
-```bash
-pip install scapy requests
-```
-
-ou
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-# Resolução de DNS
-
-Caso a VM não consiga acessar a internet, editar:
-
+Editar o arquivo de configuração:
 ```bash
 nano /etc/resolv.conf
 ```
 
-Adicionar:
-
+Adicionar os servidores:
 ```
 nameserver 8.8.8.8
 nameserver 1.1.1.1
 ```
 
----
-
-# Docker
-
-Instalação
-
+**3. Instalação do Python e Dependências Básicas**
 ```bash
-apt install docker.io -y
+apt install python3 python3-pip -y
 ```
 
-Verificação
+## Acesso e Execução Local (Sem Docker)
 
+**Acesso ao projeto**
+
+Entrar no diretório da aplicação e verificar os arquivos existentes:
 ```bash
-docker --version
+cd /root/aluno4
+ls
 ```
 
-Construção da imagem
-
+**Instalação das bibliotecas Python**
 ```bash
-docker build -t flow-generator .
+pip install scapy requests
+```
+ou via arquivo de dependências:
+```bash
+pip install -r requirements.txt
 ```
 
-Listar imagens
-
-```bash
-docker images
-```
-
-Executar container
-
-```bash
-docker run -d \
---name flow-generator \
---net=host \
---privileged \
---log-opt max-size=20m \
---log-opt max-file=3 \
-flow-generator
-```
-
-Verificar containers
-
-```bash
-docker ps
-```
-
-Ver logs
-
-```bash
-docker logs flow-generator
-```
-
-Entrar no container
-
-```bash
-docker exec -it flow-generator bash
-```
-
----
-
-# Execução sem Docker
-
+**Execução da aplicação em modo local**
 ```bash
 python3 flow_generator.py
 ```
 
----
+A aplicação inicia monitorando automaticamente todas as subinterfaces configuradas.
 
-# Funcionamento do Flow Generator
+## Docker: Construção e Gerenciamento
 
-A aplicação realiza continuamente as seguintes etapas:
-
-1. Captura pacotes utilizando a biblioteca Scapy.
-2. Identifica automaticamente a VLAN através da interface de captura.
-3. Agrupa os pacotes em fluxos.
-4. Calcula:
-   - quantidade de pacotes;
-   - quantidade de bytes;
-   - duração;
-   - taxa de transmissão;
-   - protocolo;
-   - serviço associado.
-5. Exporta todos os fluxos para o arquivo:
-
-```
-flows.json
+**1. Instalação e Verificação do Docker**
+```bash
+apt install docker.io -y
+docker --version
 ```
 
-6. Envia apenas os fluxos novos para a API REST da VM1 utilizando requisições HTTP POST.
-7. Remove automaticamente fluxos inativos após 60 segundos.
+**2. Estrutura de Arquivos para Containerização**
 
----
-
-# API REST
-
-Servidor:
-
+`requirements.txt`:
 ```
-VM1
+scapy
+requests
 ```
 
-Endpoint utilizado:
+`Dockerfile`:
+```dockerfile
+FROM python:3.12-slim
 
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "flow_generator.py"]
 ```
-http://10.0.20.10/api/v1/flows/batch
+
+**3. Construção da Imagem**
+```bash
+docker build -t flow-generator .
 ```
 
-Método
+> **Observação:** sempre que houver alteração no arquivo `flow_generator.py`, a imagem Docker deverá ser reconstruída utilizando o comando acima.
 
+**4. Gerenciamento e Inspeção dos Containers**
+
+Executar o container em segundo plano (com privilégios de rede e limites de log):
+```bash
+docker run -d \
+  --name flow-generator \
+  --net=host \
+  --privileged \
+  --log-opt max-size=20m \
+  --log-opt max-file=3 \
+  flow-generator
 ```
-POST
+
+Listar containers ativos:
+```bash
+docker ps
 ```
 
-Formato enviado
+Listar todos os containers (incluindo os parados):
+```bash
+docker ps -a
+```
 
+Listar imagens Docker locais:
+```bash
+docker images
+```
+
+Entrar no terminal interativo do container em execução:
+```bash
+docker exec -it flow-generator bash
+```
+
+Verificar o espaço em disco utilizado pelo ecossistema Docker:
+```bash
+docker system df
+```
+
+**5. Monitoramento de Logs do Container**
+
+Visualizar logs gerados:
+```bash
+docker logs flow-generator
+```
+
+Acompanhar logs em tempo real (stdout da aplicação):
+```bash
+docker logs -f flow-generator
+```
+
+Exibir as últimas 50 linhas e continuar acompanhando em tempo real:
+```bash
+docker logs --tail 50 -f flow-generator
+```
+
+## Funcionamento do Flow Generator
+
+A aplicação realiza continuamente o monitoramento e o processamento de dados na infraestrutura de forma automatizada através das seguintes funcionalidades implementadas:
+
+- **Captura Multi-protocolo:** escuta passiva de pacotes TCP, UDP e ICMP utilizando a biblioteca Scapy.
+- **Identificação Automática de VLAN:** mapeamento realizado diretamente através do nome da subinterface lógica onde o pacote foi capturado.
+- **Métricas Computadas:**
+  - Contagem total de pacotes por fluxo.
+  - Contagem acumulada de bytes.
+  - Registro de timestamp do primeiro pacote (`first_seen`) e do último pacote (`last_seen`).
+  - Cálculo em tempo real da duração exata do fluxo.
+  - Cálculo da taxa de transmissão média (bytes por segundo).
+- **Abstração L7:** identificação automática do serviço correspondente com base na porta destino.
+- **Console & Persistência:** impressão dinâmica da Flow Table no terminal e exportação sincronizada para o arquivo local `flows.json`. Atualização automática da tabela a cada 10 segundos.
+
+## Integração com a API REST
+
+O envio dos lotes de fluxos consolidados é feito para a API hospedada na VM1. Durante a rotina de comunicação, o sistema realiza o estabelecimento da conexão HTTP, realiza o envio do lote sob a semântica JSON e valida o recebimento do código de sucesso HTTP 200/201.
+
+- **Endpoint de Produção:** `http://10.0.20.10/api/v1/flows/batch`
+- **Método HTTP:** `POST`
+
+**Exemplo de Formato JSON Enviado**
 ```json
 [
     {
-        "src_ip":"10.0.10.2",
-        "dst_ip":"10.0.20.2",
-        "src_port":50502,
-        "dst_port":80,
-        "protocol":"TCP",
-        "bytes":1024,
-        "packets":8,
-        "duration_s":0.53
+        "src_ip": "10.0.10.2",
+        "dst_ip": "10.0.20.2",
+        "src_port": 50502,
+        "dst_port": 80,
+        "protocol": "TCP",
+        "bytes": 1024,
+        "packets": 8,
+        "duration_s": 0.53
     }
 ]
 ```
 
----
+**Comando de Teste e Inspeção da API**
 
-# Estrutura do projeto
+Para verificar manualmente o resumo das comunicações registradas no servidor central da VM1:
+```bash
+curl http://10.10.1.2/api/v1/flows/summary
+```
+
+## Estrutura do Projeto
 
 ```
 VM4/
@@ -259,11 +272,12 @@ VM4/
 └── README.md
 ```
 
----
+## Observações Importantes
 
-# Observações
+- **Modo Passivo:** a VM4 trabalha exclusivamente de forma passiva, apenas observando e computando métricas do tráfego espelhado.
+- **Dependência de Infraestrutura:** o espelhamento de portas (Port Mirroring/SPAN) deve estar previamente ativo nos switches virtuais corporativos configurados pelo módulo de infraestrutura.
+- **Mecanismo Antipoluição:** apenas fluxos com atualizações ou totalmente inéditos são enviados para a API REST da VM1, evitando duplicidade e consumo desnecessário de banda.
+- **Gerenciamento de Memória (Timeout):** fluxos identificados como ociosos ou inativos por mais de 60 segundos são removidos automaticamente da memória RAM do programa para evitar crescimento indefinido das estruturas de dados.
+- **Proteção de Disco:** os logs do contêiner Docker possuem limites estritos de tamanho máximo e rotação (`max-size` e `max-file`) para mitigar riscos de esgotamento de armazenamento físico da VM.
 
-- A VM4 trabalha exclusivamente de forma passiva.
-- O modo promíscuo das interfaces é configurado pelo módulo responsável pelos switches virtuais (VM5).
-- O Flow Generator apenas processa os pacotes recebidos pelo espelhamento de tráfego.
-- Os logs do Docker possuem limite de tamanho para evitar esgotamento do disco da máquina virtual.
+
