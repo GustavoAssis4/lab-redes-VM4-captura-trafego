@@ -218,11 +218,9 @@ docker run \
 
 ## Documentação Complementar
 
-A documentação detalhada do projeto encontra-se distribuída nos seguintes arquivos:
+A documentação detalhada do projeto encontra-se distribuída na pasta:
 
-* VM4_CONFIGURATION.md
-* VM10_DEPLOY.md
-* comandos.txt
+* VM4
 
 
 Esses documentos descrevem o processo completo de configuração da VM4, comandos utilizados e os procedimentos necessários para reprodução do ambiente em outras máquinas.
