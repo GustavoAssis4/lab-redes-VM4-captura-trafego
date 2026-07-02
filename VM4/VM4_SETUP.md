@@ -18,17 +18,17 @@ A VM4 está conectada à VLAN de monitoramento (VLAN 40) e recebe o tráfego esp
 ens3.10
 ens3.20
 ens3.30
-ens3.40
 ens3.50
 ens3.60
 
 ens7.10
 ens7.20
 ens7.30
-ens7.40
 ens7.50
 ens7.60
 ```
+
+> A VLAN 40 (rede de monitoramento/gerência da própria infraestrutura) não é monitorada — o script `configurar-captura-vlans.sh` (Aluno 5) não cria subinterfaces para ela.
 
 ## Endereçamento e Acesso Utilizado
 
@@ -228,7 +228,7 @@ A aplicação realiza continuamente o monitoramento e o processamento de dados n
   - Cálculo em tempo real da duração exata do fluxo.
   - Cálculo da taxa de transmissão média (bytes por segundo).
 - **Abstração L7:** identificação automática do serviço correspondente com base na porta destino.
-- **Console & Persistência:** impressão dinâmica da Flow Table no terminal e exportação sincronizada para o arquivo local `flows.json`. Atualização automática da tabela a cada 10 segundos.
+- **Console & Persistência:** impressão de um resumo de status a cada ciclo (fluxos ativos, novos fluxos enviados, pacotes e bytes totais) e exportação sincronizada para o arquivo local `flows.json`. Atualização automática a cada 10 segundos.
 
 ## Integração com a API REST
 
