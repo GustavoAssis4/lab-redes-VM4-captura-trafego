@@ -41,15 +41,9 @@ def get_service(protocol, port):
     """Retorna o nome do serviço baseado na porta."""
     if protocol == "ICMP":
         return "ICMP"
-
     services = {
-        22: "SSH",
-        53: "DNS",
-        67: "DHCP",
-        68: "DHCP",
-        80: "HTTP",
-        443: "HTTPS",
-        8000: "HTTP-TESTE"
+        22: "SSH", 53: "DNS", 67: "DHCP", 68: "DHCP",
+        80: "HTTP", 443: "HTTPS", 8000: "HTTP-TESTE"
     }
     return services.get(port, "DESCONHECIDO")
 
@@ -88,8 +82,6 @@ def process(packet):
         protocol = "ICMP"
 
     interface = packet.sniffed_on
-    # Extrai a VLAN de forma segura, previne crash se a interface não tiver '.'
-    vlan = interface.split(".")[1] if "." in interface else "N/A"
 
     flow_key = (interface, src_ip, dst_ip, src_port, dst_port, protocol)
     now = datetime.now()
@@ -108,13 +100,11 @@ def process(packet):
 
 
 def export_json():
-    """Exporta os fluxos atuais para um arquivo JSON local."""
+    """Exporta os fluxos atuais para um arquivo JSON local (sobrescreve a cada ciclo)."""
     data = []
-    
     for flow, stats in list(flows.items()):
         interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
         vlan = interface.split(".")[1] if "." in interface else "N/A"
-
         duration = (stats["last_seen"] - stats["first_seen"]).total_seconds()
         rate = stats["bytes"] / duration if duration > 0 else 0
         service = get_service(protocol, dst_port)
@@ -143,54 +133,45 @@ def export_json():
 def remove_expired_flows():
     """Remove fluxos que estão ociosos além do tempo limite (TIMEOUT)."""
     now = datetime.now()
-    
     for flow in list(flows.keys()):
         idle_time = (now - flows[flow]["last_seen"]).total_seconds()
-        
         if idle_time > FLOW_TIMEOUT:
             flow_id = hash(flow)
-            
             if flow_id in sent_flows:
                 sent_flows.remove(flow_id)
-                
-            print(f"[TIMEOUT] Removendo fluxo {flow}")
             del flows[flow]
 
 
 def print_flow_table():
-    """Thread em background que exibe e envia fluxos de tempos em tempos."""
+    """
+    Thread em background que processa, exporta e envia fluxos periodicamente.
+
+    IMPORTANTE: aqui NÃO imprimimos mais a tabela inteira a cada ciclo.
+    Isso evitava que o log do container (capturado pelo Docker em
+    /var/lib/docker/containers/.../*-json.log, sem limite por padrão)
+    crescesse indefinidamente e enchesse o disco.
+    Agora imprimimos apenas um resumo de uma linha por ciclo.
+    """
     global flows_changed
-    
+
     while True:
         time.sleep(10)
 
         if not flows_changed:
             continue
-
         flows_changed = False
+
         remove_expired_flows()
         export_json()
 
-        print("\n")
-        print("=" * 90)
-        print("FLOW TABLE")
-        print("=" * 90)
-
-        if len(flows) == 0:
-            print("Nenhum fluxo capturado.")
-            continue
-
         batch = []
-
         for flow, stats in list(flows.items()):
-            interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
-            vlan = interface.split(".")[1] if "." in interface else "N/A"
-
+            src_ip, dst_ip = flow[1], flow[2]
+            src_port, dst_port = flow[3], flow[4]
+            protocol = flow[5]
             duration = (stats["last_seen"] - stats["first_seen"]).total_seconds()
-            rate = stats["bytes"] / duration if duration > 0 else 0
-            service = get_service(protocol, dst_port)
-            flow_id = hash(flow)
 
+            flow_id = hash(flow)
             if flow_id not in sent_flows:
                 flow_data = {
                     "src_ip": src_ip,
@@ -205,29 +186,17 @@ def print_flow_table():
                 batch.append(flow_data)
                 sent_flows.add(flow_id)
 
-            print(f"INTERFACE : {interface}")
-            print(f"VLAN      : {vlan}")
-            print(f"PROTOCOLO : {protocol}")
-            print(f"SERVIÇO   : {service}")
-            print(f"FLOW ID   : {flow_id}")
-            print(f"ORIGEM    : {src_ip}:{src_port}")
-            print(f"DESTINO   : {dst_ip}:{dst_port}")
-            print(f"PACOTES   : {stats['packets']}")
-            print(f"BYTES     : {stats['bytes']}")
-            print(f"DURAÇÃO   : {duration:.2f}s")
-            print(f"BYTES/S   : {rate:.2f}")
-            print(f"INÍCIO    : {stats['first_seen'].strftime('%H:%M:%S')}")
-            print(f"ÚLTIMO    : {stats['last_seen'].strftime('%H:%M:%S')}")
-            print("-" * 90)
-
         if batch:
             send_flow(batch)
 
-        print("\nRESUMO GERAL")
-        print("-" * 90)
-        print(f"PACOTES TOTAIS : {total_packets}")
-        print(f"BYTES TOTAIS   : {total_bytes}")
-        print("=" * 90)
+        # Log resumido: uma linha por ciclo, em vez da tabela inteira
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(
+            f"[{timestamp}] fluxos ativos: {len(flows)} | "
+            f"novos enviados: {len(batch)} | "
+            f"pacotes totais: {total_packets} | "
+            f"bytes totais: {total_bytes}"
+        )
 
 
 # ==========================================
@@ -252,4 +221,3 @@ if __name__ == "__main__":
 
     # Inicia o sniffer
     sniff(iface=interfaces_to_monitor, prn=process, store=False)
-
