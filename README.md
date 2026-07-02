@@ -166,9 +166,7 @@ POST /api/v1/flows/
 | requirements.txt     | Dependências Python         |
 | Dockerfile           | Construção da imagem Docker |
 | flows.json           | Exportação dos fluxos       |
-| VM4_CONFIGURATION.md | Configuração da VM4         |
-| VM10_DEPLOY.md       | Guia de implantação         |
-
+| VM4_SETUP            | Configuração da VM4         |
 ---
 
 ## Dependências
@@ -218,10 +216,11 @@ docker run \
 
 ## Documentação Complementar
 
-A documentação detalhada do projeto encontra-se distribuída na pasta:
+A documentação detalhada do projeto encontra-se distribuída nas pastas:
 
 * VM4
 
+* Docker
 
 Esses documentos descrevem o processo completo de configuração da VM4, comandos utilizados e os procedimentos necessários para reprodução do ambiente em outras máquinas.
 
