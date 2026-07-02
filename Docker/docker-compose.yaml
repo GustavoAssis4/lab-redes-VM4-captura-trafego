@@ -7,6 +7,6 @@ network_mode: host
 privileged: true
 restart: unless-stopped
 volumes:
-- ./flows:/app/flows
+- ./flows:/app/flows/batch
 environment:
 - PYTHONUNBUFFERED=1
