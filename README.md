@@ -8,7 +8,7 @@ Implementado com **Python + Scapy + Docker**, com escuta em subinterfaces VLAN v
 
 ```
 VM4-Flow-Generator/
-├── VM4/                  # Aplicação Flow Generator e configuração da VM4
+├── VM4/                   # Aplicação Flow Generator e configuração da VM4
 ├── Docker/                # Dockerfile e docker-compose
 ├── images/                # Imagens utilizadas na documentação
 └── README.md
