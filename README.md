@@ -39,7 +39,7 @@ VM4-Flow-Generator/
 |---|---|
 | [VM4/VM4_SETUP.md](VM4/VM4_SETUP.md) | Configuração da VM4 |
 | [Docker/README.md](Docker/README.md) | Build e execução do container |
-| [Docs/relatorio.pdf](docs/relatorio.pdf) | Relatório técnico individual |
+| [Docs/relatorio.pdf](Docs/relatorio.pdf) | Relatório técnico individual |
 
 ---
 Trabalho desenvolvido por Gustavo Assis Ferreira, Aluno 4.
