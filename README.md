@@ -14,15 +14,6 @@ VM4-Flow-Generator/
 └── README.md
 ```
 
-## Ambientes
-
-| Ambiente | Descrição | README |
-|---|---|---|
-| VM4 | VM OpenStack, captura via subinterfaces `ens3.X` e `ens7.X`, envio para VM1 | [VM4/README.md](VM4/README.md) |
-| Docker | Build e execução em container, `--net=host` e `--privileged` | [Docker/README.md](Docker/README.md) |
-
-## Visão geral
-
 | Item | Descrição |
 |---|---|
 | Captura | Interfaces `ens3.X` e `ens7.X` (VLANs 10, 20, 30, 50, 60) |
