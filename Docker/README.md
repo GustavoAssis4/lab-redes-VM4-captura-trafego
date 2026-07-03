@@ -38,10 +38,13 @@ services:
     network_mode: host
     privileged: true
     restart: unless-stopped
-    volumes:
-      - ./flows:/app/flows/batch
     environment:
       - PYTHONUNBUFFERED=1
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
 ```
 
 ### Configurações importantes
