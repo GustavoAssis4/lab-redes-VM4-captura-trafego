@@ -44,11 +44,23 @@ ens7.60
 
 **Acesso remoto à VM:**
 
+*Entrar via VM11*
 ```bash
 ssh root@10.10.1.22
-# Senha padrão: 123456
+# Senha padrão: XXXXXX
 ```
 
+*Dentro da VM11:*
+```bash
+ssh root@10.10.40.10
+# Senha padrão: XXXXXX
+```
+
+**Dentro da VM4**
+```bash
+ssh root@10.10.40.10
+# Senha padrão: XXXXXX
+```
 ## Configuração Inicial e Inspeção do Sistema
 
 Verificar interfaces e endereços IP:
