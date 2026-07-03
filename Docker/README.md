@@ -33,7 +33,7 @@ A imagem base `python:3.12-slim` foi escolhida por oferecer um ambiente Python f
 version: "3.9"
 services:
   flow-generator:
-    image: gustavosalmarino/flow-generator:latest
+    image: salmarino/flow-generator:latest
     container_name: flow-generator
     network_mode: host
     privileged: true
