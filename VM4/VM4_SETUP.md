@@ -62,6 +62,10 @@ ssh root@10.10.40.10
 ```bash
 cd aluno4
 ```
+*Listar arquivos:*
+```bash
+ls
+```
 ## Configuração Inicial e Inspeção do Sistema
 
 Verificar interfaces e endereços IP:
