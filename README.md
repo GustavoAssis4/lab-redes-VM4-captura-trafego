@@ -32,28 +32,6 @@ VM4-Flow-Generator/
 | Docker | Containerização da aplicação |
 | Open vSwitch | Espelhamento de tráfego (SPAN/mirror) |
 
-## Execução
-
-### Local
-
-```bash
-pip install -r requirements.txt
-python3 flow_generator.py
-```
-
-### Docker
-
-```bash
-docker build -t flow-generator .
-
-docker run -d \
-  --name flow-generator \
-  --net=host \
-  --privileged \
-  --log-opt max-size=20m \
-  --log-opt max-file=3 \
-  flow-generator
-```
 
 ## Documentação
 
