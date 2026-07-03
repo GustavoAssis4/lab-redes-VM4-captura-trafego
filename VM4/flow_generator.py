@@ -204,8 +204,8 @@ def print_flow_table():
 # ==========================================
 if __name__ == "__main__":
     interfaces_to_monitor = [
-        "ens3.10", "ens3.20", "ens3.30", "ens3.40", "ens3.50", "ens3.60",
-        "ens7.10", "ens7.20", "ens7.30", "ens7.40", "ens7.50", "ens7.60",
+        "ens3.10", "ens3.20", "ens3.30", "ens3.50", "ens3.60",
+        "ens7.10", "ens7.20", "ens7.30", "ens7.50", "ens7.60",
     ]
 
     print("=" * 60)
