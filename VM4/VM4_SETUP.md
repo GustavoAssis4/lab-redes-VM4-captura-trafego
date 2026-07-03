@@ -56,10 +56,11 @@ ssh root@10.10.40.10
 # Senha padrão: XXXXXX
 ```
 
-**Dentro da VM4**
+**Acessar o diretório aluno4**
+
+*Dentro da VM4:*
 ```bash
-ssh root@10.10.40.10
-# Senha padrão: XXXXXX
+cd aluno4
 ```
 ## Configuração Inicial e Inspeção do Sistema
 
