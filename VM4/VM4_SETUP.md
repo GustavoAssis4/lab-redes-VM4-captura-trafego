@@ -56,7 +56,7 @@ ssh root@10.10.40.10
 # Senha padrão: XXXXXX
 ```
 
-**Acessar/Criar o diretório aluno4**
+**Acessar/Criar o diretório aluno4 :**
 
 *Dentro da VM4:*
 ```bash
